@@ -1,5 +1,7 @@
 # stylix-palette-generators
 
+[![nix flake check](https://img.shields.io/badge/nix%20flake%20check-9%2F9%20passing-brightgreen)](#running-the-tests)
+
 Standalone base16 palette generators using [matugen](https://github.com/InioX/matugen)
 (Material You) and [tinty](https://github.com/tinted-theming/tinty) — for any
 [base16.nix](https://github.com/SenchoPens/base16.nix) consumer (notably [stylix](https://github.com/nix-community/stylix)), extracted from
@@ -101,10 +103,12 @@ Per-system (`lib.${system}.*`):
 - `mappings.semantic2base16` — maps Material You roles onto base16 slots
 - `mappings.base162base24` / `mappings.base242base16` — base16 ↔ base24 conversions
 - `mkScheme` — composed helper: image → base16 attrset
+- `mkExtraRepresentations` — same inputs as `mkScheme`, but returns *all* resolved/mapped formats at once (`base16`, `base24`, `semantic`) instead of only base16, and never throws if one is missing
 
 Top-level, pkgs-parametrized (`lib.*`):
 
 - `mkSchemeWith pkgs` — same as `lib.${system}.mkScheme`, given your own `pkgs`
+- `mkExtraRepresentationsWith pkgs` — same as `lib.${system}.mkExtraRepresentations`, given your own `pkgs`
 - `generatorsWith pkgs` — same as `lib.${system}.generators`, given your own `pkgs`
 - `mappings` — system-independent, same as `lib.${system}.mappings`
 
@@ -138,6 +142,37 @@ are then passed through `mappingFunction`, and the final `base16` result
 (which must not be `null`) is returned as an attrset ready for
 `stylix.base16Scheme` or any other base16.nix consumer.
 
+## `mkExtraRepresentations`: see everything at once
+
+`mkScheme` only ever returns the final base16 slice — useful for
+`stylix.base16Scheme`, but it throws away the base24 and semantic (Material
+You role) data it computed along the way. `mkExtraRepresentations` takes the
+exact same arguments and instead returns all three, unfiltered:
+
+```nix
+mkExtraRepresentations {
+  image = ./wallpaper.png;
+  polarity = "dark";
+  generators.semantic = generators.semantic.matugen { scheme = "fruit-salad"; };
+  mappingFunction = lib.flip lib.pipe [
+    mappings.semantic2base16
+    mappings.base162base24
+  ];
+}
+# => {
+#      polarity = "dark";
+#      base16   = { base00 = "..."; ... };  # or null if not resolved
+#      base24   = { base00 = "..."; ...; base17 = "..."; };
+#      semantic = { primary = "..."; surface = "..."; ... };
+#    }
+```
+
+Unlike `mkScheme`, it never throws if a given format wasn't resolved — the
+corresponding field is simply `null`. This is handy for debugging what a
+generator/mappingFunction combination actually produces, or for consumers
+that want the semantic role names or base24 palette directly rather than
+only the base16 subset.
+
 ## matugen options
 
 `generators.semantic.matugen` (and `generators.base16.matugen`) accept:
@@ -152,6 +187,33 @@ are then passed through `mappingFunction`, and the final `base16` result
   filter = "lanczos3";   # catmull-rom | gaussian | lanczos3 | nearest | triangle
 }
 ```
+
+## Running the tests
+
+The flake ships a full test suite as `checks`, covering every generator,
+mapping, and manual-scheme use case (including a negative test that a missing
+base16 palette throws a clear error). Run everything with:
+
+```bash
+nix flake check
+```
+
+Add `-L` to stream build logs (useful to watch matugen/tinty actually run):
+
+```bash
+nix flake check -L
+```
+
+Each check is also buildable individually, and writes the actual resolved
+scheme out as JSON so you can inspect it directly:
+
+```bash
+nix build .#checks.x86_64-linux.semantic-matugen-dark
+cat result | jq
+```
+
+The suite generates its own synthetic test image with ImageMagick, so it
+needs no network access or user-supplied files and is fully reproducible.
 
 ## Why this exists
 

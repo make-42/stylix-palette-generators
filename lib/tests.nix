@@ -257,4 +257,25 @@ in {
       expectedToThrow = true;
       threw = !result.success;
     };
+
+  # 10. mkExtraRepresentations exposes base16, base24, and semantic together,
+  # without requiring base16 to be non-null and without throwing.
+  extra-representations = let
+    reps = spg.mkExtraRepresentations {
+      image = testImage;
+      polarity = "dark";
+      generators.semantic = spg.generators.semantic.matugen {scheme = "fruit-salad";};
+      mappingFunction = lib.flip lib.pipe [
+        spg.mappings.semantic2base16
+        spg.mappings.base162base24
+      ];
+    };
+  in
+    mkAssertionCheck "extra-representations" [
+      (assertMsg (reps.polarity == "dark") "polarity should be passed through unchanged")
+      (assertMsg (hasAllBase16Colors reps.base16) "base16 should be fully populated")
+      (assertMsg (hasAllBase24Colors reps.base24) "base24 should be fully populated after base162base24 mapping")
+      (assertMsg (reps.semantic != null && reps.semantic ? primary) "semantic should retain the raw Material You role data")
+    ]
+    reps;
 }
