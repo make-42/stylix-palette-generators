@@ -4,9 +4,9 @@
 
 Standalone base16 palette generators using [matugen](https://github.com/InioX/matugen)
 (Material You) and [tinty](https://github.com/tinted-theming/tinty) — for any
-[base16.nix](https://github.com/SenchoPens/base16.nix) consumer (notably [stylix](https://github.com/nix-community/stylix)), extracted from
-a year-and-a-half-old, never-merged stylix PR so they work independently of
-stylix's internals.
+[base16.nix](https://github.com/SenchoPens/base16.nix) consumer (notably [Stylix](https://github.com/nix-community/stylix)), extracted from
+a year-and-a-half-old, never-merged Stylix PR so they work independently of
+Stylix's internals.
 
 Import it the same way you'd import a set of prebuilt base16 schemes (e.g.
 `tinted-theming/schemes` or a catppuccin flake): as a flake input that hands you
@@ -15,6 +15,38 @@ scheme data, not as a patch to someone else's module system.
 `manual/generator -> merge -> mappingFunction -> base16 consumption`
 
 ## Usage
+### Minimal example usage with Stylix, after importing the `stylix-palette-generators` flake
+```nix
+{
+  config,
+  pkgs,
+  lib,
+  inputs,
+  ...
+}: let
+  spg = inputs.stylix-palette-generators.lib.${pkgs.stdenv.hostPlatform.system};
+in {
+  stylix = {
+    enable = true;
+    image = ./test-image.png;
+    polarity = "dark";
+    base16Scheme = spg.mkScheme {
+      image = config.stylix.image;
+      polarity = config.stylix.polarity;
+      generators.semantic = spg.generators.semantic.matugen {
+        contrast = 0.0;
+        lightnessDark = -0.02;
+        lightnessLight = 0.0;
+        scheme = "fruit-salad";
+      };
+      mappingFunction = pkgs.lib.flip pkgs.lib.pipe [
+        spg.mappings.semantic2base16
+      ];
+    };
+  };
+}
+```
+
 
 ### As a plain base16 scheme (works with any base16.nix consumer, including stylix)
 
@@ -217,7 +249,7 @@ needs no network access or user-supplied files and is fully reproducible.
 
 ## Why this exists
 
-The upstream stylix PR adding first-class matugen support has been open for a
+The upstream Stylix PR adding first-class matugen support has been open for a
 year and a half and required continual rebasing to stay usable. This flake
 extracts the working parts so they can be consumed directly without depending
 on that PR ever landing.
