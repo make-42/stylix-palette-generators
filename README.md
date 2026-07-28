@@ -10,7 +10,7 @@ Stylix's internals.
 
 Import it the same way you'd import a set of prebuilt base16 schemes (e.g.
 `tinted-theming/schemes` or a catppuccin flake): as a flake input that hands you
-scheme data, not as a patch to someone else's module system.not as simple but define
+scheme data. 
 
 `manual/generator -> merge -> mappingFunction -> base16 consumption`
 
